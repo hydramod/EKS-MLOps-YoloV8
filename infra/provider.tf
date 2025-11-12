@@ -21,15 +21,23 @@ terraform {
   }
 
   # Backend configuration for S3 state storage
+  # IMPORTANT: Before uncommenting, you must first deploy the bootstrap infrastructure
+  # See infra/bootstrap/README.md for instructions
+  # Run: cd infra/bootstrap && terraform init && terraform apply
+  # Then update the values below with the outputs from bootstrap
+
   backend "s3" {
-    bucket         = "yolov8-terraform-state"      # Change this to your bucket name
+    bucket         = "yolov8-mlops-terraform-state"  # From bootstrap output: state_bucket_name
     key            = "eks-mlops/terraform.tfstate"
-    region         = "us-east-1"                    # Change to your region
+    region         = "us-east-1"                     # Match your bootstrap region
     encrypt        = true
-    dynamodb_table = "terraform-state-lock"         # Change this to your table name
-    # Uncomment when backend is set up
-    # dynamodb_table = "yolov8-terraform-locks"
+    dynamodb_table = "yolov8-mlops-terraform-lock"   # From bootstrap output: dynamodb_table_name
   }
+
+  # Alternative: Comment out the backend above to use local state during initial testing
+  # backend "local" {
+  #   path = "terraform.tfstate"
+  # }
 }
 
 provider "aws" {

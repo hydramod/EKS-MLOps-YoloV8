@@ -13,9 +13,26 @@ This guide helps you get the YOLOv8 MLOps application running quickly.
 - [ ] Domain name registered
 - [ ] GitHub account
 
-## 5-Step Deployment
+## 6-Step Deployment
 
-### Step 1: Prepare AWS (15 minutes)
+### Step 0: Bootstrap State Backend (5 minutes - FIRST TIME ONLY)
+
+Before any infrastructure deployment, bootstrap the Terraform state backend:
+
+```bash
+# Automated bootstrap
+./scripts/bootstrap.sh
+```
+
+This creates S3 bucket and DynamoDB table for Terraform state management.
+
+**Alternatively, use the combined setup script:**
+```bash
+./scripts/setup.sh
+# This will prompt you to run bootstrap automatically
+```
+
+### Step 1: Prepare AWS (10 minutes)
 
 ```bash
 # Set your domain and region
@@ -29,20 +46,6 @@ aws route53 create-hosted-zone \
   --caller-reference $(date +%s)
 
 # Note the name servers and update your domain registrar
-
-# Create S3 bucket for Terraform state
-aws s3 mb s3://${PROJECT_NAME}-terraform-state --region $AWS_REGION
-aws s3api put-bucket-versioning \
-  --bucket ${PROJECT_NAME}-terraform-state \
-  --versioning-configuration Status=Enabled
-
-# Create DynamoDB table for state locking
-aws dynamodb create-table \
-  --table-name terraform-state-lock \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region $AWS_REGION
 ```
 
 ### Step 2: Configure Terraform (5 minutes)

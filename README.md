@@ -134,6 +134,29 @@ This project demonstrates a complete MLOps workflow for deploying a machine lear
 
 ## Getting Started
 
+### Step 0: Bootstrap State Backend (FIRST TIME ONLY)
+
+Before deploying any infrastructure, you must create the Terraform state backend. This is a one-time setup.
+
+**Option 1: Automated Bootstrap (Recommended)**
+```bash
+./scripts/bootstrap.sh
+```
+
+**Option 2: Manual Bootstrap**
+```bash
+cd infra/bootstrap
+terraform init
+terraform apply
+```
+
+This creates:
+- S3 bucket for Terraform state storage
+- DynamoDB table for state locking
+- IAM policy for state access
+
+See `infra/bootstrap/README.md` for detailed instructions.
+
 ### Step 1: Configure AWS and Domain
 
 1. **Create Route 53 Hosted Zone**
@@ -142,24 +165,6 @@ This project demonstrates a complete MLOps workflow for deploying a machine lear
    ```
 
 2. **Update domain nameservers** with your registrar using Route 53 NS records
-
-3. **Create S3 bucket for Terraform state**
-   ```bash
-   aws s3 mb s3://yolov8-terraform-state --region us-east-1
-   aws s3api put-bucket-versioning \
-     --bucket yolov8-terraform-state \
-     --versioning-configuration Status=Enabled
-   ```
-
-4. **Create DynamoDB table for state locking**
-   ```bash
-   aws dynamodb create-table \
-     --table-name terraform-state-lock \
-     --attribute-definitions AttributeName=LockID,AttributeType=S \
-     --key-schema AttributeName=LockID,KeyType=HASH \
-     --billing-mode PAY_PER_REQUEST \
-     --region us-east-1
-   ```
 
 ### Step 2: Configure Terraform Variables
 

@@ -90,33 +90,23 @@ get_inputs() {
     fi
 }
 
-# Create AWS resources
-create_aws_resources() {
-    echo -e "\n${YELLOW}Creating AWS resources...${NC}"
+# Run bootstrap for state backend
+run_bootstrap() {
+    echo -e "\n${YELLOW}Bootstrap State Backend${NC}"
+    echo "The Terraform state backend (S3 + DynamoDB) must be created first."
+    echo ""
 
-    # Get AWS account ID
-    ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-    echo "AWS Account ID: $ACCOUNT_ID"
+    read -p "Do you want to run the bootstrap now? (y/n): " RUN_BOOTSTRAP
 
-    # Create S3 bucket for Terraform state
-    echo -e "\n${YELLOW}Creating S3 bucket for Terraform state...${NC}"
-    aws s3 mb s3://${PROJECT_NAME}-terraform-state --region $AWS_REGION || true
-    aws s3api put-bucket-versioning \
-        --bucket ${PROJECT_NAME}-terraform-state \
-        --versioning-configuration Status=Enabled
-
-    echo -e "${GREEN}✓ S3 bucket created${NC}"
-
-    # Create DynamoDB table for state locking
-    echo -e "\n${YELLOW}Creating DynamoDB table for state locking...${NC}"
-    aws dynamodb create-table \
-        --table-name terraform-state-lock \
-        --attribute-definitions AttributeName=LockID,AttributeType=S \
-        --key-schema AttributeName=LockID,KeyType=HASH \
-        --billing-mode PAY_PER_REQUEST \
-        --region $AWS_REGION 2>/dev/null || echo "Table may already exist"
-
-    echo -e "${GREEN}✓ DynamoDB table ready${NC}"
+    if [ "$RUN_BOOTSTRAP" == "y" ]; then
+        echo -e "\n${YELLOW}Running bootstrap...${NC}"
+        ./scripts/bootstrap.sh
+    else
+        echo -e "${YELLOW}Skipping bootstrap. Make sure to run it manually:${NC}"
+        echo "  ./scripts/bootstrap.sh"
+        echo ""
+        read -p "Press Enter to continue..."
+    fi
 }
 
 # Update configuration files
@@ -168,7 +158,7 @@ EOF
 main() {
     check_prerequisites
     get_inputs
-    create_aws_resources
+    run_bootstrap
     update_configs
 
     echo -e "\n${GREEN}=================================="
