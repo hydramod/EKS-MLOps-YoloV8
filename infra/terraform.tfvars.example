@@ -1,0 +1,32 @@
+# Example Terraform Variables
+# Copy this file to terraform.tfvars and update with your values
+
+aws_region  = "us-east-1"
+environment = "production"
+project_name = "yolov8-mlops"
+
+# VPC Configuration
+vpc_cidr           = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+
+# EKS Configuration
+cluster_version          = "1.28"
+node_group_instance_types = ["t3.medium"]
+node_group_desired_size  = 2
+node_group_min_size      = 1
+node_group_max_size      = 4
+
+# Domain Configuration
+domain_name = "yourdomain.com"  # CHANGE THIS
+subdomain   = "ml"
+
+# Image Tags (updated by CI/CD)
+backend_image_tag  = "latest"
+frontend_image_tag = "latest"
+
+# Additional Tags
+tags = {
+  Owner       = "DevOps Team"
+  CostCenter  = "Engineering"
+  Environment = "Production"
+}

@@ -1,0 +1,13 @@
+apiVersion: v2
+name: yolov8
+description: A Helm chart for YOLOv8 Object Detection Application
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - yolov8
+  - ml
+  - object-detection
+  - mlops
+maintainers:
+  - name: MLOps Team

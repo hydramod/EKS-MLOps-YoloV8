@@ -1,0 +1,2 @@
+# Model files will be downloaded at runtime
+# The yolov8n.pt model will be automatically downloaded by ultralytics on first run

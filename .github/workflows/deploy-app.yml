@@ -1,0 +1,134 @@
+name: Deploy Application
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Images"]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      backend_tag:
+        description: 'Backend image tag'
+        required: true
+        default: 'latest'
+      frontend_tag:
+        description: 'Frontend image tag'
+        required: true
+        default: 'latest'
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: yolov8-mlops-production-eks
+  HELM_RELEASE_NAME: yolov8
+  HELM_NAMESPACE: yolov8
+
+jobs:
+  deploy:
+    name: Deploy Application to EKS
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.13.0'
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tags
+        id: image-tags
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "backend_tag=${{ github.event.inputs.backend_tag }}" >> $GITHUB_OUTPUT
+            echo "frontend_tag=${{ github.event.inputs.frontend_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "backend_tag=latest" >> $GITHUB_OUTPUT
+            echo "frontend_tag=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ./charts/yolov8 \
+            --namespace ${{ env.HELM_NAMESPACE }} \
+            --create-namespace \
+            --set backend.image.repository=${{ steps.login-ecr.outputs.registry }}/yolov8-mlops-production-backend \
+            --set backend.image.tag=${{ steps.image-tags.outputs.backend_tag }} \
+            --set frontend.image.repository=${{ steps.login-ecr.outputs.registry }}/yolov8-mlops-production-frontend \
+            --set frontend.image.tag=${{ steps.image-tags.outputs.frontend_tag }} \
+            --set global.domain=${{ secrets.DOMAIN_NAME }} \
+            --set global.subdomain=ml \
+            --wait \
+            --timeout 10m
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n ${{ env.HELM_NAMESPACE }}
+          kubectl get svc -n ${{ env.HELM_NAMESPACE }}
+          kubectl get ingress -n ${{ env.HELM_NAMESPACE }}
+
+      - name: Wait for pods to be ready
+        run: |
+          kubectl wait --for=condition=ready pod \
+            -l app.kubernetes.io/instance=${{ env.HELM_RELEASE_NAME }} \
+            -n ${{ env.HELM_NAMESPACE }} \
+            --timeout=300s
+
+      - name: Health check
+        run: |
+          # Wait for load balancer to be ready
+          sleep 60
+
+          # Get the application URL
+          APP_URL="https://ml.${{ secrets.DOMAIN_NAME }}"
+
+          echo "Testing health endpoint: ${APP_URL}/health"
+
+          # Retry health check up to 10 times
+          for i in {1..10}; do
+            if curl -f -k "${APP_URL}/health"; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 30s..."
+            sleep 30
+          done
+
+          echo "Health check failed after 10 attempts"
+          exit 1
+
+      - name: Summary
+        run: |
+          echo "### Deployment Summary :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Application URL:** https://ml.${{ secrets.DOMAIN_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Backend Image:** ${{ steps.login-ecr.outputs.registry }}/yolov8-mlops-production-backend:${{ steps.image-tags.outputs.backend_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend Image:** ${{ steps.login-ecr.outputs.registry }}/yolov8-mlops-production-frontend:${{ steps.image-tags.outputs.frontend_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Pods:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n ${{ env.HELM_NAMESPACE }} >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
