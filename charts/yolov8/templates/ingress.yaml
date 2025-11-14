@@ -1,0 +1,44 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "yolov8.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yolov8.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+  - hosts:
+    - {{ .Values.global.subdomain }}.{{ .Values.global.domain }}
+    secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+  - host: {{ .Values.global.subdomain }}.{{ .Values.global.domain }}
+    http:
+      paths:
+      - path: /health
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "yolov8.fullname" . }}-backend
+            port:
+              number: {{ .Values.backend.service.port }}
+      - path: /predict
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "yolov8.fullname" . }}-backend
+            port:
+              number: {{ .Values.backend.service.port }}
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "yolov8.fullname" . }}-frontend
+            port:
+              number: {{ .Values.frontend.service.port }}
+{{- end }}

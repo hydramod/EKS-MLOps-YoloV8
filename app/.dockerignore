@@ -1,0 +1,30 @@
+# General .dockerignore for app directory
+.git/
+.gitignore
+*.md
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+venv/
+env/
+
+# Node
+node_modules/
+npm-debug.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+**/Dockerfile
+**/.dockerignore

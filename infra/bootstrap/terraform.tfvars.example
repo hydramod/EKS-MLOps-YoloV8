@@ -1,0 +1,11 @@
+# Example Terraform variables for bootstrap
+# Copy this file to terraform.tfvars and customize
+
+aws_region          = "us-east-1"
+project_name        = "yolov8-mlops"
+state_bucket_name   = "yolov8-mlops-terraform-state"  # MUST BE GLOBALLY UNIQUE
+dynamodb_table_name = "yolov8-mlops-terraform-lock"
+
+# Optional settings
+enable_point_in_time_recovery = true
+state_retention_days          = 90

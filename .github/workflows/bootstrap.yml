@@ -1,0 +1,124 @@
+name: Bootstrap Terraform Backend
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: 'Project name'
+        required: true
+        default: 'yolov8-mlops'
+      aws_region:
+        description: 'AWS region'
+        required: true
+        default: 'us-east-1'
+      bucket_suffix:
+        description: 'Unique suffix for S3 bucket name (leave empty for random)'
+        required: false
+
+env:
+  TF_VERSION: 1.5.0
+
+jobs:
+  bootstrap:
+    name: Bootstrap State Backend
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    defaults:
+      run:
+        working-directory: ./infra/bootstrap
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ github.event.inputs.aws_region }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Generate bucket name
+        id: bucket
+        run: |
+          if [ -z "${{ github.event.inputs.bucket_suffix }}" ]; then
+            SUFFIX=$(openssl rand -hex 4)
+          else
+            SUFFIX="${{ github.event.inputs.bucket_suffix }}"
+          fi
+          BUCKET_NAME="${{ github.event.inputs.project_name }}-tf-state-${SUFFIX}"
+          echo "bucket_name=${BUCKET_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Create terraform.tfvars
+        run: |
+          cat > terraform.tfvars <<EOF
+          aws_region          = "${{ github.event.inputs.aws_region }}"
+          project_name        = "${{ github.event.inputs.project_name }}"
+          state_bucket_name   = "${{ steps.bucket.outputs.bucket_name }}"
+          dynamodb_table_name = "${{ github.event.inputs.project_name }}-tf-lock"
+          EOF
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -out=bootstrap.tfplan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve bootstrap.tfplan
+
+      - name: Get Outputs
+        id: outputs
+        run: |
+          echo "state_bucket=$(terraform output -raw state_bucket_name)" >> $GITHUB_OUTPUT
+          echo "dynamodb_table=$(terraform output -raw dynamodb_table_name)" >> $GITHUB_OUTPUT
+          echo "iam_policy_arn=$(terraform output -raw terraform_state_policy_arn)" >> $GITHUB_OUTPUT
+
+      - name: Summary
+        run: |
+          echo "### Bootstrap Complete :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**State Backend Configuration:**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **S3 Bucket:** \`${{ steps.outputs.outputs.state_bucket }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **DynamoDB Table:** \`${{ steps.outputs.outputs.dynamodb_table }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **IAM Policy:** \`${{ steps.outputs.outputs.iam_policy_arn }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Update \`infra/provider.tf\` with the backend configuration" >> $GITHUB_STEP_SUMMARY
+          echo "2. Run the main Terraform workflow to deploy infrastructure" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`hcl" >> $GITHUB_STEP_SUMMARY
+          terraform output -raw backend_config_hcl >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment on PR (if applicable)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `#### Bootstrap Complete :rocket:
+
+            **State Backend Configuration:**
+            - S3 Bucket: \`${{ steps.outputs.outputs.state_bucket }}\`
+            - DynamoDB Table: \`${{ steps.outputs.outputs.dynamodb_table }}\`
+
+            Update your \`infra/provider.tf\` with these values.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
