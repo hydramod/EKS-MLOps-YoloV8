@@ -5,6 +5,14 @@
 
 set -e
 
+# Load environment variables from .env if it exists
+if [ -f .env ]; then
+    echo "Loading environment from .env file..."
+    set -a
+    source .env
+    set +a
+fi
+
 echo "=================================="
 echo "YOLOv8 MLOps Setup Script"
 echo "=================================="
@@ -71,12 +79,23 @@ check_prerequisites() {
 get_inputs() {
     echo -e "\n${YELLOW}Configuration${NC}"
 
-    read -p "Enter your domain name (e.g., example.com): " DOMAIN_NAME
-    read -p "Enter AWS region [us-east-1]: " AWS_REGION
-    AWS_REGION=${AWS_REGION:-us-east-1}
+    # Domain name (use env var as default if set)
+    if [ -n "$DOMAIN_NAME" ]; then
+        read -p "Enter your domain name [$DOMAIN_NAME]: " INPUT_DOMAIN_NAME
+        DOMAIN_NAME=${INPUT_DOMAIN_NAME:-$DOMAIN_NAME}
+    else
+        read -p "Enter your domain name (e.g., example.com): " DOMAIN_NAME
+    fi
 
-    read -p "Enter project name [yolov8-mlops]: " PROJECT_NAME
-    PROJECT_NAME=${PROJECT_NAME:-yolov8-mlops}
+    # AWS region (use env var as default if set)
+    DEFAULT_AWS_REGION=${AWS_REGION:-us-east-1}
+    read -p "Enter AWS region [$DEFAULT_AWS_REGION]: " INPUT_AWS_REGION
+    AWS_REGION=${INPUT_AWS_REGION:-$DEFAULT_AWS_REGION}
+
+    # Project name (use env var as default if set)
+    DEFAULT_PROJECT_NAME=${PROJECT_NAME:-yolov8-mlops}
+    read -p "Enter project name [$DEFAULT_PROJECT_NAME]: " INPUT_PROJECT_NAME
+    PROJECT_NAME=${INPUT_PROJECT_NAME:-$DEFAULT_PROJECT_NAME}
 
     echo -e "\n${GREEN}Configuration:${NC}"
     echo "  Domain: $DOMAIN_NAME"
@@ -137,11 +156,8 @@ EOF
 
     echo -e "${GREEN}✓ terraform.tfvars created${NC}"
 
-    # Export variables
-    export DOMAIN_NAME
-    export AWS_REGION
-    export PROJECT_NAME
-    export ACCOUNT_ID
+    # Get AWS Account ID
+    ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
     # Create env file
     cat > .env <<EOF
@@ -158,11 +174,7 @@ EOF
 main() {
     check_prerequisites
     get_inputs
-<<<<<<< HEAD
     run_bootstrap
-=======
-    create_aws_resources
->>>>>>> test_branch
     update_configs
 
     echo -e "\n${GREEN}=================================="

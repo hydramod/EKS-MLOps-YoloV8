@@ -5,6 +5,14 @@
 
 set -e
 
+# Load environment variables from .env if it exists
+if [ -f .env ]; then
+    echo "Loading environment from .env file..."
+    set -a
+    source .env
+    set +a
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -56,13 +64,15 @@ get_inputs() {
     echo "Please provide the following information:"
     echo ""
 
-    # Project name
-    read -p "Project name [yolov8-mlops]: " PROJECT_NAME
-    PROJECT_NAME=${PROJECT_NAME:-yolov8-mlops}
+    # Project name (use env var as default if set)
+    DEFAULT_PROJECT_NAME=${PROJECT_NAME:-yolov8-mlops}
+    read -p "Project name [$DEFAULT_PROJECT_NAME]: " INPUT_PROJECT_NAME
+    PROJECT_NAME=${INPUT_PROJECT_NAME:-$DEFAULT_PROJECT_NAME}
 
-    # AWS region
-    read -p "AWS region [us-east-1]: " AWS_REGION
-    AWS_REGION=${AWS_REGION:-us-east-1}
+    # AWS region (use env var as default if set)
+    DEFAULT_AWS_REGION=${AWS_REGION:-us-east-1}
+    read -p "AWS region [$DEFAULT_AWS_REGION]: " INPUT_AWS_REGION
+    AWS_REGION=${INPUT_AWS_REGION:-$DEFAULT_AWS_REGION}
 
     # Generate a unique bucket name
     RANDOM_SUFFIX=$(openssl rand -hex 4)
