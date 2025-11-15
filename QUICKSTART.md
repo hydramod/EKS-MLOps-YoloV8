@@ -32,37 +32,40 @@ This creates S3 bucket and DynamoDB table for Terraform state management.
 # This will prompt you to run bootstrap automatically
 ```
 
-### Step 1: Prepare AWS (10 minutes)
+### Step 1: Configure Environment (2 minutes)
 
 ```bash
-# Set your domain and region
-export DOMAIN_NAME="yourdomain.com"
-export AWS_REGION="us-east-1"
-export PROJECT_NAME="yolov8-mlops"
+# Copy the example environment file
+cp .env.example .env
 
+# Edit .env with your values
+nano .env
+
+# Set:
+# DOMAIN_NAME=yourdomain.com
+# AWS_REGION=us-east-1
+# PROJECT_NAME=yolov8-mlops
+# ACCOUNT_ID will be auto-populated by setup.sh
+
+# Load environment variables
+source .env
+```
+
+Alternatively, you can run the interactive setup script which will create the `.env` file for you:
+
+```bash
+./scripts/setup.sh
+```
+
+### Step 1b: Prepare AWS Route 53 (5 minutes)
+
+```bash
 # Create Route 53 hosted zone
 aws route53 create-hosted-zone \
   --name $DOMAIN_NAME \
   --caller-reference $(date +%s)
 
 # Note the name servers and update your domain registrar
-<<<<<<< HEAD
-=======
-
-# Create S3 bucket for Terraform state
-aws s3 mb s3://${PROJECT_NAME}-terraform-state --region $AWS_REGION
-aws s3api put-bucket-versioning \
-  --bucket ${PROJECT_NAME}-terraform-state \
-  --versioning-configuration Status=Enabled
-
-# Create DynamoDB table for state locking
-aws dynamodb create-table \
-  --table-name terraform-state-lock \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region $AWS_REGION
->>>>>>> test_branch
 ```
 
 ### Step 2: Configure Terraform (5 minutes)
@@ -102,42 +105,42 @@ aws eks update-kubeconfig --region $AWS_REGION --name ${PROJECT_NAME}-production
 ### Step 4: Build and Push Images (10 minutes)
 
 ```bash
-# Get your AWS account ID
-export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+# Load environment (if not already loaded)
+source .env
 
 # Login to ECR
 aws ecr get-login-password --region $AWS_REGION | \
   docker login --username AWS --password-stdin \
-  ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+  ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
 # Build and push backend
 cd ../app/backend
 docker build -t yolov8-backend .
 docker tag yolov8-backend:latest \
-  ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-backend:latest
-docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-backend:latest
+  ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-backend:latest
+docker push ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-backend:latest
 
 # Build and push frontend
 cd ../frontend
 docker build -t yolov8-frontend .
 docker tag yolov8-frontend:latest \
-  ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-frontend:latest
-docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-frontend:latest
+  ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-frontend:latest
+docker push ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-frontend:latest
 ```
 
 ### Step 5: Deploy Application (10 minutes)
 
 ```bash
-# Deploy with Helm
+# Deploy with Helm (or use the deploy script: ./scripts/deploy.sh)
 cd ../../charts/yolov8
 helm upgrade --install yolov8 . \
   --namespace yolov8 \
   --create-namespace \
   --set global.domain=$DOMAIN_NAME \
   --set global.subdomain=ml \
-  --set backend.image.repository=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-backend \
+  --set backend.image.repository=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-backend \
   --set backend.image.tag=latest \
-  --set frontend.image.repository=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-frontend \
+  --set frontend.image.repository=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-frontend \
   --set frontend.image.tag=latest \
   --wait \
   --timeout 10m
