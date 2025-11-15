@@ -46,6 +46,23 @@ aws route53 create-hosted-zone \
   --caller-reference $(date +%s)
 
 # Note the name servers and update your domain registrar
+<<<<<<< HEAD
+=======
+
+# Create S3 bucket for Terraform state
+aws s3 mb s3://${PROJECT_NAME}-terraform-state --region $AWS_REGION
+aws s3api put-bucket-versioning \
+  --bucket ${PROJECT_NAME}-terraform-state \
+  --versioning-configuration Status=Enabled
+
+# Create DynamoDB table for state locking
+aws dynamodb create-table \
+  --table-name terraform-state-lock \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST \
+  --region $AWS_REGION
+>>>>>>> test_branch
 ```
 
 ### Step 2: Configure Terraform (5 minutes)

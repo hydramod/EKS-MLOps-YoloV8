@@ -158,7 +158,11 @@ EOF
 main() {
     check_prerequisites
     get_inputs
+<<<<<<< HEAD
     run_bootstrap
+=======
+    create_aws_resources
+>>>>>>> test_branch
     update_configs
 
     echo -e "\n${GREEN}=================================="

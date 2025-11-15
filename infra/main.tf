@@ -52,6 +52,15 @@ module "eks" {
   tags                     = local.common_tags
 }
 
+# ACM Module - SSL Certificate
+module "acm" {
+  source = "./modules/acm"
+
+  domain_name = var.domain_name
+  subdomain   = var.subdomain
+  tags        = local.common_tags
+}
+
 # Route53 Module
 module "route53" {
   source = "./modules/route53"

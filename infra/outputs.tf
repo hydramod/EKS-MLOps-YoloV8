@@ -48,6 +48,11 @@ output "frontend_ecr_repository_url" {
   value       = module.ecr.frontend_repository_url
 }
 
+output "acm_certificate_arn" {
+  description = "ARN of the ACM certificate"
+  value       = module.acm.certificate_arn
+}
+
 output "application_url" {
   description = "Application URL"
   value       = "https://${var.subdomain}.${var.domain_name}"
