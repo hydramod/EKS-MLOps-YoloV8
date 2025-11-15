@@ -93,9 +93,8 @@ This project demonstrates a complete MLOps workflow for deploying a machine lear
 │       ├── vpc/              # VPC, Subnets, NAT
 │       ├── eks/              # EKS Cluster, Node Groups
 │       ├── ecr/              # Container Registries
-│       ├── acm/              # SSL Certificates
 │       ├── route53/          # DNS Management
-│       └── helm/             # Nginx, ExternalDNS, Cert-Manager
+│       └── helm/             # Nginx, ExternalDNS, Cert-Manager (Let's Encrypt)
 ├── charts/
 │   └── yolov8/               # Helm Chart for Application
 │       ├── Chart.yaml
@@ -210,10 +209,9 @@ See `infra/bootstrap/README.md` for detailed instructions.
    - VPC with public/private subnets across 3 AZs
    - EKS cluster with managed node group
    - ECR repositories for backend and frontend
-   - ACM certificate for HTTPS
    - Nginx Ingress Controller
    - ExternalDNS for Route 53 automation
-   - Cert-Manager for TLS management
+   - Cert-Manager for automated TLS certificate management with Let's Encrypt
 
    **Note:** This process takes approximately 15-20 minutes.
 
