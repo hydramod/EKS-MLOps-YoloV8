@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for Frontend
 # Stage 1: Builder (if we had a build step for React/Vue, we'd use it here)
-FROM node:18-alpine as builder
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
@@ -18,20 +18,18 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser && \
-    chown -R appuser:appuser /app
+# Change ownership to existing node user
+RUN chown -R node:node /app
 
 # Copy from builder
-COPY --from=builder --chown=appuser:appuser /app ./
+COPY --from=builder --chown=node:node /app ./
 
 # Set environment variables
 ENV NODE_ENV=production \
     PORT=3000
 
-# Switch to non-root user
-USER appuser
+# Switch to non-root user (use existing 'node' user)
+USER node
 
 # Expose port
 EXPOSE 3000
