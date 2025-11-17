@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-This guide helps you get the YOLOv8 MLOps application running quickly.
+This guide helps you get the YOLOv8 MLOps application running quickly using automated scripts.
 
 ## Prerequisites Checklist
 
@@ -9,103 +9,130 @@ This guide helps you get the YOLOv8 MLOps application running quickly.
 - [ ] Terraform >= 1.5.0 installed
 - [ ] kubectl >= 1.28 installed
 - [ ] Helm >= 3.13 installed
-- [ ] Docker installed (for local testing)
+- [ ] Docker installed
 - [ ] Domain name registered
-- [ ] GitHub account
+- [ ] Route 53 hosted zone created for your domain
 
-## 6-Step Deployment
-
-### Step 0: Bootstrap State Backend (5 minutes - FIRST TIME ONLY)
-
-Before any infrastructure deployment, bootstrap the Terraform state backend:
+## Fastest Deployment (3 Commands)
 
 ```bash
-# Automated bootstrap
-./scripts/bootstrap.sh
+# 1. Setup and bootstrap
+./scripts/setup.sh
+
+# 2. Deploy infrastructure
+cd infra && terraform init && terraform apply
+
+# 3. Build and deploy application
+cd .. && ./scripts/deploy.sh
 ```
 
-This creates S3 bucket and DynamoDB table for Terraform state management.
+Done! Your application will be available at `https://ml.yourdomain.com` after DNS propagation (5-10 minutes).
 
-**Alternatively, use the combined setup script:**
+## Detailed 6-Step Deployment
+
+### Step 0: Clone Repository
+
+```bash
+git clone <your-repo-url>
+cd ECS-MLOPS-
+```
+
+### Step 1: Automated Setup and Bootstrap (5 minutes - FIRST TIME ONLY)
+
+Run the interactive setup script:
+
 ```bash
 ./scripts/setup.sh
-# This will prompt you to run bootstrap automatically
 ```
 
-### Step 1: Configure Environment (2 minutes)
+This script will:
+- ✅ Validate all prerequisites (AWS CLI, Terraform, kubectl, Helm, Docker)
+- ✅ Prompt for your configuration (domain name, AWS region, project name)
+- ✅ Offer to run bootstrap automatically (creates S3 + DynamoDB for Terraform state)
+- ✅ Create `.env` file with your configuration
+- ✅ Create `infra/terraform.tfvars` with infrastructure settings
+- ✅ Auto-detect your AWS account ID
+
+**What gets created:**
+- `.env` - Environment variables for scripts
+- `infra/terraform.tfvars` - Terraform configuration
+- `infra/bootstrap/terraform.tfvars` - Bootstrap configuration
+- S3 bucket and DynamoDB table for Terraform state (if you chose to run bootstrap)
+
+**Important:** After bootstrap completes, copy the backend configuration output and update `infra/provider.tf` (lines 24-30).
+
+### Step 2: Prepare AWS Route 53 (5 minutes)
+
+**If you haven't already created a Route 53 hosted zone:**
 
 ```bash
-# Copy the example environment file
-cp .env.example .env
-
-# Edit .env with your values
-nano .env
-
-# Set:
-# DOMAIN_NAME=yourdomain.com
-# AWS_REGION=us-east-1
-# PROJECT_NAME=yolov8-mlops
-# ACCOUNT_ID will be auto-populated by setup.sh
-
-# Load environment variables
+# Load your configuration
 source .env
-```
 
-Alternatively, you can run the interactive setup script which will create the `.env` file for you:
-
-```bash
-./scripts/setup.sh
-```
-
-### Step 1b: Prepare AWS Route 53 (5 minutes)
-
-```bash
 # Create Route 53 hosted zone
 aws route53 create-hosted-zone \
   --name $DOMAIN_NAME \
   --caller-reference $(date +%s)
 
-# Note the name servers and update your domain registrar
+# Note the name servers from the output
+# Update your domain registrar with these NS records
 ```
 
-### Step 2: Configure Terraform (5 minutes)
-
+**Verify NS records are propagated:**
 ```bash
-# Clone repository
-git clone <your-repo-url>
-cd ECS-MLOPS-
-
-# Update Terraform variables
-cd infra
-cp terraform.tfvars.example terraform.tfvars
-
-# Edit terraform.tfvars with your values
-nano terraform.tfvars
-# Change:
-# - domain_name = "yourdomain.com"
-# - aws_region (if different)
+dig $DOMAIN_NAME NS +short
 ```
 
 ### Step 3: Deploy Infrastructure (20 minutes)
 
 ```bash
+cd infra
+
 # Initialize Terraform
 terraform init
 
 # Preview changes
 terraform plan
 
-# Deploy (takes ~15-20 minutes)
-terraform apply -auto-approve
+# Deploy infrastructure (takes ~15-20 minutes)
+terraform apply
 
-# Configure kubectl
+# Verify cluster is accessible
 aws eks update-kubeconfig --region $AWS_REGION --name ${PROJECT_NAME}-production-eks
+kubectl get nodes
 ```
 
-### Step 4: Build and Push Images (10 minutes)
+**What gets created:**
+- VPC with public/private subnets across 3 availability zones
+- EKS cluster with managed node group (2x t3.medium instances)
+- ECR repositories for backend and frontend images
+- Nginx Ingress Controller
+- ExternalDNS for automatic Route53 record management
+- Cert-Manager for automatic TLS certificates (Let's Encrypt)
+
+### Step 4: Build and Deploy Application (15 minutes)
+
+**🚀 Automated Option (Recommended):**
 
 ```bash
-# Load environment (if not already loaded)
+cd ..  # Return to project root
+./scripts/deploy.sh
+```
+
+This script automatically:
+- ✅ Configures kubectl for your EKS cluster
+- ✅ Logs into AWS ECR
+- ✅ Builds backend and frontend Docker images
+- ✅ Pushes images to ECR repositories
+- ✅ Deploys application with Helm using your .env configuration
+- ✅ Verifies deployment and displays application URL
+
+**🔧 Manual Option:**
+
+If you prefer to run commands manually:
+
+```bash
+# Load environment
 source .env
 
 # Login to ECR
@@ -114,26 +141,24 @@ aws ecr get-login-password --region $AWS_REGION | \
   ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
 # Build and push backend
-cd ../app/backend
+cd app/backend
 docker build -t yolov8-backend .
 docker tag yolov8-backend:latest \
   ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-backend:latest
-docker push ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-backend:latest
+docker push \
+  ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-backend:latest
 
 # Build and push frontend
 cd ../frontend
 docker build -t yolov8-frontend .
 docker tag yolov8-frontend:latest \
   ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-frontend:latest
-docker push ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-frontend:latest
-```
+docker push \
+  ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-frontend:latest
 
-### Step 5: Deploy Application (10 minutes)
-
-```bash
-# Deploy with Helm (or use the deploy script: ./scripts/deploy.sh)
-cd ../../charts/yolov8
-helm upgrade --install yolov8 . \
+# Deploy with Helm
+cd ../..
+helm upgrade --install yolov8 ./charts/yolov8 \
   --namespace yolov8 \
   --create-namespace \
   --set global.domain=$DOMAIN_NAME \
@@ -144,35 +169,44 @@ helm upgrade --install yolov8 . \
   --set frontend.image.tag=latest \
   --wait \
   --timeout 10m
-
-# Check deployment
-kubectl get pods -n yolov8
-kubectl get ingress -n yolov8
 ```
 
-## Verification
-
-### Check Application Status
+### Step 5: Verify Deployment
 
 ```bash
 # Verify all pods are running
 kubectl get pods -n yolov8
 
-# Check ingress
+# Check services
+kubectl get svc -n yolov8
+
+# Check ingress and get application URL
 kubectl get ingress -n yolov8
 
-# Wait for DNS (5-10 minutes)
+# Wait for DNS propagation (5-10 minutes)
+source .env
 watch -n 5 "dig ml.$DOMAIN_NAME +short"
+```
 
-# Test health endpoint
+**Check deployment status:**
+```bash
+# View pod logs
+kubectl logs -n yolov8 -l app.kubernetes.io/component=backend -f
+
+# Check certificate status (should show "Ready" after 2-5 minutes)
+kubectl get certificate -n yolov8
+
+# Test health endpoint (once DNS is propagated)
 curl https://ml.$DOMAIN_NAME/health
 ```
 
-### Access Application
+### Step 6: Access Your Application
 
-Open your browser: `https://ml.yourdomain.com`
+1. **Open your browser:** `https://ml.yourdomain.com`
+2. **Upload a test image** with common objects (people, cars, animals)
+3. **View detection results** with bounding boxes and labels
 
-Upload a test image and verify object detection works!
+**Congratulations!** Your YOLOv8 MLOps application is now running on AWS EKS.
 
 ## Cleanup
 
@@ -181,11 +215,18 @@ To destroy all resources and stop charges:
 ```bash
 # Delete Helm release
 helm uninstall yolov8 -n yolov8
+kubectl delete namespace yolov8
 
 # Destroy infrastructure
 cd infra
-terraform destroy -auto-approve
+terraform destroy
+
+# Optionally destroy bootstrap (if you won't use it again)
+cd bootstrap
+terraform destroy
 ```
+
+**Important:** Always verify in the AWS Console that all resources are deleted to avoid unexpected charges.
 
 ## Troubleshooting
 
