@@ -131,28 +131,74 @@ This project demonstrates a complete MLOps workflow for deploying a machine lear
 - GitHub Actions enabled
 - Required secrets configured (see below)
 
+## Quick Reference
+
+### Automated Deployment (3 Commands)
+
+For the fastest deployment experience:
+
+```bash
+# 1. Initial setup and bootstrap
+./scripts/setup.sh
+
+# 2. Deploy infrastructure
+cd infra && terraform init && terraform apply
+
+# 3. Build and deploy application
+cd .. && ./scripts/deploy.sh
+```
+
+See detailed instructions below for step-by-step guidance.
+
 ## Getting Started
+
+### Deployment Options
+
+This project provides two approaches for deployment:
+
+**🚀 Automated Setup (Recommended)**
+- Use `./scripts/setup.sh` for interactive configuration
+- Use `./scripts/deploy.sh` for automated deployment
+- Best for quick starts and consistent deployments
+
+**🔧 Manual Setup (Advanced)**
+- Follow step-by-step instructions below
+- Best for learning and customization
+- Provides full control over each component
 
 ### Step 0: Bootstrap State Backend (FIRST TIME ONLY)
 
 Before deploying any infrastructure, you must create the Terraform state backend. This is a one-time setup.
 
-**Option 1: Automated Bootstrap (Recommended)**
+**Option 1: Combined Setup Script (Recommended)**
 ```bash
-./scripts/bootstrap.sh
+./scripts/setup.sh
+# This script will:
+# - Validate prerequisites (AWS CLI, Terraform, kubectl, Helm, Docker)
+# - Prompt for configuration (domain, region, project name)
+# - Offer to run bootstrap automatically
+# - Create .env file with your configuration
+# - Create infra/terraform.tfvars with infrastructure settings
 ```
 
-**Option 2: Manual Bootstrap**
+**Option 2: Standalone Bootstrap**
+```bash
+./scripts/bootstrap.sh
+# This creates:
+# - S3 bucket for Terraform state storage
+# - DynamoDB table for state locking
+# - IAM policy for state access
+# - Outputs backend configuration for provider.tf
+```
+
+**Option 3: Manual Bootstrap**
 ```bash
 cd infra/bootstrap
 terraform init
 terraform apply
 ```
 
-This creates:
-- S3 bucket for Terraform state storage
-- DynamoDB table for state locking
-- IAM policy for state access
+**Important:** After running bootstrap, update `infra/provider.tf` with the backend configuration output from the bootstrap script.
 
 See `infra/bootstrap/README.md` for detailed instructions.
 
@@ -165,25 +211,57 @@ See `infra/bootstrap/README.md` for detailed instructions.
 
 2. **Update domain nameservers** with your registrar using Route 53 NS records
 
-### Step 2: Configure Terraform Variables
+### Step 2: Configure Environment
 
-1. **Update `infra/variables.tf`** with your values:
-   ```hcl
-   variable "domain_name" {
-     default = "yourdomain.com"  # Change this
-   }
+**If you used `./scripts/setup.sh`:** Your `.env` and `terraform.tfvars` files are already created. Skip to Step 3.
 
-   variable "aws_region" {
-     default = "us-east-1"       # Change if needed
-   }
+**Manual Configuration:**
+
+1. **Create and configure .env file**
+   ```bash
+   cp .env.example .env
    ```
 
-2. **Update `infra/provider.tf`** backend configuration:
+   Edit `.env` with your values:
+   ```bash
+   DOMAIN_NAME=yourdomain.com
+   AWS_REGION=us-east-1
+   PROJECT_NAME=yolov8-mlops
+   ACCOUNT_ID=123456789012  # Your AWS account ID
+   ```
+
+2. **Create Terraform variables file**
+   ```bash
+   cat > infra/terraform.tfvars <<EOF
+   aws_region  = "us-east-1"
+   environment = "production"
+   project_name = "yolov8-mlops"
+
+   vpc_cidr           = "10.0.0.0/16"
+   availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+
+   cluster_version          = "1.28"
+   node_group_instance_types = ["t3.medium"]
+   node_group_desired_size  = 2
+   node_group_min_size      = 1
+   node_group_max_size      = 4
+
+   domain_name = "yourdomain.com"
+   subdomain   = "ml"
+
+   backend_image_tag  = "latest"
+   frontend_image_tag = "latest"
+   EOF
+   ```
+
+3. **Update `infra/provider.tf`** backend configuration with the values from bootstrap output:
    ```hcl
    backend "s3" {
-     bucket = "yolov8-terraform-state"  # Your bucket name
-     key    = "eks-mlops/terraform.tfstate"
-     region = "us-east-1"
+     bucket         = "your-state-bucket-name"  # From bootstrap output
+     key            = "terraform.tfstate"
+     region         = "us-east-1"
+     encrypt        = true
+     dynamodb_table = "your-lock-table-name"    # From bootstrap output
    }
    ```
 
@@ -228,46 +306,66 @@ See `infra/bootstrap/README.md` for detailed instructions.
 
 ### Step 4: Build and Push Docker Images
 
-1. **Login to ECR**
+**Automated Option (Recommended):**
+```bash
+# Skip to Step 5 and use the deploy.sh script which handles both building and deployment
+./scripts/deploy.sh
+```
+
+**Manual Option:**
+
+1. **Load environment variables**
    ```bash
-   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
+   source .env
    ```
 
-2. **Build backend image**
+2. **Login to ECR**
+   ```bash
+   aws ecr get-login-password --region $AWS_REGION | \
+     docker login --username AWS --password-stdin \
+     ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+   ```
+
+3. **Build backend image**
    ```bash
    cd app/backend
    docker build -t yolov8-backend .
-   docker tag yolov8-backend:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/yolov8-mlops-production-backend:latest
-   docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/yolov8-mlops-production-backend:latest
+   docker tag yolov8-backend:latest \
+     ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-backend:latest
+   docker push \
+     ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-backend:latest
    ```
 
-3. **Build frontend image**
+4. **Build frontend image**
    ```bash
-   cd app/frontend
+   cd ../frontend
    docker build -t yolov8-frontend .
-   docker tag yolov8-frontend:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/yolov8-mlops-production-frontend:latest
-   docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/yolov8-mlops-production-frontend:latest
+   docker tag yolov8-frontend:latest \
+     ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-frontend:latest
+   docker push \
+     ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-frontend:latest
+   cd ../..
    ```
 
 ### Step 5: Deploy Application with Helm
 
-1. **Update Helm values**
+**Automated Option (Recommended):**
+```bash
+./scripts/deploy.sh
+# This script will:
+# - Configure kubectl for your EKS cluster
+# - Login to ECR
+# - Build and push Docker images
+# - Deploy application with Helm using values from .env
+# - Verify deployment and show application URL
+```
 
-   Edit `charts/yolov8/values.yaml`:
-   ```yaml
-   global:
-     domain: yourdomain.com
-     subdomain: ml
+**Manual Option:**
 
-   backend:
-     image:
-       repository: <account-id>.dkr.ecr.us-east-1.amazonaws.com/yolov8-mlops-production-backend
-       tag: latest
-
-   frontend:
-     image:
-       repository: <account-id>.dkr.ecr.us-east-1.amazonaws.com/yolov8-mlops-production-frontend
-       tag: latest
+1. **Configure kubectl**
+   ```bash
+   source .env
+   aws eks update-kubeconfig --region $AWS_REGION --name ${PROJECT_NAME}-production-eks
    ```
 
 2. **Deploy with Helm**
@@ -275,6 +373,12 @@ See `infra/bootstrap/README.md` for detailed instructions.
    helm upgrade --install yolov8 ./charts/yolov8 \
      --namespace yolov8 \
      --create-namespace \
+     --set global.domain=$DOMAIN_NAME \
+     --set global.subdomain=ml \
+     --set backend.image.repository=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-backend \
+     --set backend.image.tag=latest \
+     --set frontend.image.repository=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-frontend \
+     --set frontend.image.tag=latest \
      --wait \
      --timeout 10m
    ```
@@ -288,12 +392,12 @@ See `infra/bootstrap/README.md` for detailed instructions.
 
 4. **Wait for DNS propagation** (5-10 minutes)
    ```bash
-   watch -n 5 "dig ml.yourdomain.com +short"
+   watch -n 5 "dig ml.$DOMAIN_NAME +short"
    ```
 
 5. **Access your application**
 
-   Open your browser to: `https://ml.yourdomain.com`
+   Open your browser to: `https://ml.$DOMAIN_NAME`
 
 ## CI/CD with GitHub Actions
 
@@ -339,12 +443,13 @@ Configure the following secrets in your GitHub repository (Settings > Secrets an
 
 ### Automated Workflows
 
-The project includes 4 GitHub Actions workflows:
+The project includes 5 GitHub Actions workflows:
 
-1. **build-and-push.yml** - Builds and pushes Docker images to ECR
-2. **terraform.yml** - Plans and applies Terraform changes
-3. **deploy-app.yml** - Deploys application with Helm
-4. **destroy.yml** - Destroys all infrastructure (manual trigger)
+1. **bootstrap.yml** - Creates Terraform state backend (S3 + DynamoDB)
+2. **terraform.yml** - Plans and applies Terraform infrastructure changes
+3. **build-and-push.yml** - Builds and pushes Docker images to ECR with security scanning
+4. **deploy-app.yml** - Deploys application to EKS with Helm
+5. **destroy.yml** - Destroys all infrastructure (manual trigger only)
 
 ### Triggering Deployments
 
