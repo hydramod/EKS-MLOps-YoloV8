@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 # EKS Cluster IAM Role
 resource "aws_iam_role" "cluster" {
   name = "${var.project_name}-${var.environment}-eks-cluster-role"
