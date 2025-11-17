@@ -1,10 +1,6 @@
-# Default values for yolov8
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
 # Global settings
 global:
-  domain: example.com
+  domain: alistechlab.click
   subdomain: ml
 
 # Backend configuration
@@ -13,7 +9,7 @@ backend:
 
   image:
     repository: "" # Will be set by CI/CD or manually
-    pullPolicy: IfNotPresent
+    pullPolicy: Always  # CHANGED: Always pull to avoid cache issues with :latest tag
     tag: "latest"
 
   service:
@@ -61,7 +57,7 @@ frontend:
 
   image:
     repository: "" # Will be set by CI/CD or manually
-    pullPolicy: IfNotPresent
+    pullPolicy: Always  # CHANGED: Always pull to avoid cache issues with :latest tag
     tag: "latest"
 
   service:
@@ -109,7 +105,7 @@ ingress:
     cert-manager.io/cluster-issuer: "letsencrypt-production"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    external-dns.alpha.kubernetes.io/hostname: "ml.example.com"
+    external-dns.alpha.kubernetes.io/hostname: "ml.alistechlab.click"
   tls:
     enabled: true
     secretName: yolov8-tls
