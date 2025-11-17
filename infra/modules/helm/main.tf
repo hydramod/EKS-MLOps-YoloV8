@@ -176,8 +176,8 @@ resource "helm_release" "nginx_ingress" {
         service = {
           type = "LoadBalancer"
           annotations = {
-            "service.beta.kubernetes.io/aws-load-balancer-type"              = "nlb"
-            "service.beta.kubernetes.io/aws-load-balancer-backend-protocol"  = "tcp"
+            "service.beta.kubernetes.io/aws-load-balancer-type"                              = "nlb"
+            "service.beta.kubernetes.io/aws-load-balancer-backend-protocol"                  = "tcp"
             "service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled" = "true"
           }
         }
@@ -185,7 +185,7 @@ resource "helm_release" "nginx_ingress" {
           enabled = true
         }
         config = {
-          use-forwarded-headers = "true"
+          use-forwarded-headers      = "true"
           compute-full-forwarded-for = "true"
         }
       }
@@ -210,11 +210,11 @@ resource "helm_release" "external_dns" {
           "eks.amazonaws.com/role-arn" = aws_iam_role.external_dns.arn
         }
       }
-      provider = "aws"
-      policy   = "sync"
-      sources  = ["ingress", "service"]
+      provider      = "aws"
+      policy        = "sync"
+      sources       = ["ingress", "service"]
       domainFilters = [var.domain_name]
-      txtOwnerId = var.cluster_name
+      txtOwnerId    = var.cluster_name
       aws = {
         region = var.aws_region
       }

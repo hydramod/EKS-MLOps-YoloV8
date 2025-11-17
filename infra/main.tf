@@ -40,16 +40,16 @@ module "ecr" {
 module "eks" {
   source = "./modules/eks"
 
-  project_name             = var.project_name
-  environment              = var.environment
-  cluster_version          = var.cluster_version
-  vpc_id                   = module.vpc.vpc_id
-  private_subnet_ids       = module.vpc.private_subnet_ids
+  project_name              = var.project_name
+  environment               = var.environment
+  cluster_version           = var.cluster_version
+  vpc_id                    = module.vpc.vpc_id
+  private_subnet_ids        = module.vpc.private_subnet_ids
   node_group_instance_types = var.node_group_instance_types
-  node_group_desired_size  = var.node_group_desired_size
-  node_group_min_size      = var.node_group_min_size
-  node_group_max_size      = var.node_group_max_size
-  tags                     = local.common_tags
+  node_group_desired_size   = var.node_group_desired_size
+  node_group_min_size       = var.node_group_min_size
+  node_group_max_size       = var.node_group_max_size
+  tags                      = local.common_tags
 }
 
 # Route53 Module
@@ -68,14 +68,14 @@ module "route53" {
 module "helm" {
   source = "./modules/helm"
 
-  project_name       = var.project_name
-  environment        = var.environment
-  cluster_name       = module.eks.cluster_name
+  project_name            = var.project_name
+  environment             = var.environment
+  cluster_name            = module.eks.cluster_name
   cluster_oidc_issuer_url = module.eks.cluster_oidc_issuer_url
-  domain_name        = var.domain_name
-  subdomain          = var.subdomain
-  aws_region         = var.aws_region
-  tags               = local.common_tags
+  domain_name             = var.domain_name
+  subdomain               = var.subdomain
+  aws_region              = var.aws_region
+  tags                    = local.common_tags
 
   depends_on = [module.eks]
 }

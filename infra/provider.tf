@@ -24,11 +24,11 @@ terraform {
   # IMPORTANT: Update these values with the output from ./scripts/bootstrap.sh
   # Run: cd infra/bootstrap && terraform output -raw backend_config_hcl
   backend "s3" {
-    bucket         = "eks-mlops-alistechlab"      # Replace with your S3 bucket name from bootstrap
+    bucket         = "eks-mlops-alistechlab" # Replace with your S3 bucket name from bootstrap
     key            = "terraform.tfstate"
-    region         = "us-east-1"                  # Replace with your AWS region
+    region         = "us-east-1" # Replace with your AWS region
     encrypt        = true
-    dynamodb_table = "eks-mlops-terraform-locks"  # Replace with your DynamoDB table name from bootstrap
+    dynamodb_table = "eks-mlops-terraform-locks" # Replace with your DynamoDB table name from bootstrap
   }
 }
 

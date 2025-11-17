@@ -4,7 +4,7 @@ terraform {
 
     kubectl = {
 
-      source  = "alekc/kubectl"
+      source = "alekc/kubectl"
 
       version = "~> 2.0"
 
@@ -12,7 +12,7 @@ terraform {
 
     kubernetes = {
 
-      source  = "hashicorp/kubernetes"
+      source = "hashicorp/kubernetes"
 
       version = "~> 2.23"
 
@@ -20,7 +20,7 @@ terraform {
 
     helm = {
 
-      source  = "hashicorp/helm"
+      source = "hashicorp/helm"
 
       version = "~> 2.11"
 
@@ -28,7 +28,7 @@ terraform {
 
     aws = {
 
-      source  = "hashicorp/aws"
+      source = "hashicorp/aws"
 
       version = "~> 5.0"
 
