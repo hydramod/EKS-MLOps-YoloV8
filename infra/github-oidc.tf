@@ -38,7 +38,7 @@ resource "aws_iam_role" "github_actions" {
           }
           StringLike = {
             # Format: "repo:GITHUB_ORG/REPO_NAME:*"
-            "token.actions.githubusercontent.com:sub" = "repo:hydramod/ECS-MLOPS-:ref:refs/heads/main"
+            "token.actions.githubusercontent.com:sub" = "repo:hydramod/EKS-MLOps-YoloV8:ref:refs/heads/main"
           }
         }
       }
