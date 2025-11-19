@@ -1,3 +1,4 @@
+/* Global reset */
 * {
     margin: 0;
     padding: 0;
@@ -16,6 +17,7 @@ body {
     margin: 0 auto;
 }
 
+/* Header */
 header {
     text-align: center;
     color: white;
@@ -32,6 +34,7 @@ header p {
     opacity: 0.9;
 }
 
+/* Main card */
 main {
     background: white;
     border-radius: 20px;
@@ -39,6 +42,7 @@ main {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
+/* Upload section */
 .upload-section {
     margin-bottom: 30px;
 }
@@ -87,6 +91,7 @@ main {
     color: #718096;
 }
 
+/* Results layout */
 .results-section {
     display: grid;
     grid-template-columns: 2fr 1fr;
@@ -94,6 +99,7 @@ main {
     margin-top: 30px;
 }
 
+/* Image preview + canvas */
 .image-container {
     position: relative;
     background: #f7fafc;
@@ -117,6 +123,7 @@ main {
     pointer-events: none;
 }
 
+/* Detections panel */
 .detections-panel {
     background: #f7fafc;
     border-radius: 12px;
@@ -162,6 +169,7 @@ main {
     margin-top: 5px;
 }
 
+/* Buttons */
 .btn-secondary {
     width: 100%;
     padding: 12px 24px;
@@ -181,6 +189,7 @@ main {
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
+/* Loading state */
 .loading {
     text-align: center;
     padding: 60px 20px;
@@ -206,6 +215,7 @@ main {
     font-size: 1.1rem;
 }
 
+/* Status bar */
 .status-bar {
     margin-top: 30px;
     padding-top: 20px;
@@ -239,7 +249,172 @@ main {
     color: #f56565;
 }
 
+/* ==========================
+   Mode Toggle (new)
+   ========================== */
+
+.mode-toggle {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    justify-content: center;
+}
+
+.mode-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: #f7fafc;
+    color: #4a5568;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.mode-btn:hover {
+    border-color: #667eea;
+    background: #edf2f7;
+}
+
+.mode-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.mode-btn svg {
+    flex-shrink: 0;
+}
+
+/* ==========================
+   Webcam Section (new)
+   ========================== */
+
+.webcam-section {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+}
+
+.webcam-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.video-wrapper {
+    position: relative;
+    background: #1a202c;
+    border-radius: 12px;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+}
+
+#webcam {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+#webcamCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.webcam-controls {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+/* Primary & danger buttons (new, complements .btn-secondary) */
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: #48bb78;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: #38a169;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+}
+
+.btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: #f56565;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-danger:hover {
+    background: #e53e3e;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 101, 101, 0.4);
+}
+
+/* Webcam stats */
+.webcam-stats {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: #f7fafc;
+    border-radius: 8px;
+    padding: 15px 20px;
+    font-size: 0.95rem;
+    color: #4a5568;
+}
+
+.webcam-stats span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.webcam-stats strong {
+    color: #667eea;
+    font-size: 1.3rem;
+}
+
+#webcamDetectionsList {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+/* ==========================
+   Responsive
+   ========================== */
+
 @media (max-width: 768px) {
+    /* Existing layout adjustments */
     .results-section {
         grid-template-columns: 1fr;
     }
@@ -250,5 +425,34 @@ main {
 
     main {
         padding: 20px;
+    }
+
+    /* New components responsive adjustments */
+    .mode-toggle {
+        flex-direction: column;
+    }
+
+    .mode-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .webcam-section {
+        grid-template-columns: 1fr;
+    }
+
+    .webcam-controls {
+        flex-direction: column;
+    }
+
+    .btn-primary,
+    .btn-danger {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .webcam-stats {
+        flex-direction: column;
+        gap: 10px;
     }
 }

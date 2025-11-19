@@ -1,29 +1,91 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YOLOv8 Object Detection</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="container">
         <header>
             <h1>🎯 YOLOv8 Object Detection</h1>
-            <p>Upload an image to detect objects using AI</p>
+            <p>Upload an image or use your webcam to detect objects using AI</p>
         </header>
 
         <main>
-            <div class="upload-section">
+
+            <div class="mode-toggle">
+                <button class="mode-btn active" id="uploadModeBtn" data-mode="upload">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    Upload Image
+                </button>
+                <button class="mode-btn" id="webcamModeBtn" data-mode="webcam">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
+                        </path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                    Live Webcam
+                </button>
+            </div>
+
+            <div class="upload-section" id="uploadSection">
                 <div class="upload-box" id="uploadBox">
                     <input type="file" id="imageInput" accept="image/*" hidden>
                     <div class="upload-content">
-                        <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                         <p>Click to upload or drag and drop</p>
                         <span>PNG, JPG, JPEG (MAX. 10MB)</span>
                     </div>
+                </div>
+            </div>
+
+            <div class="webcam-section" id="webcamSection" style="display: none;">
+                <div class="webcam-container">
+                    <div class="video-wrapper">
+                        <video id="webcam" autoplay playsinline></video>
+                        <canvas id="webcamCanvas"></canvas>
+                    </div>
+                    <div class="webcam-controls">
+                        <button class="btn-primary" id="startWebcamBtn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                            </svg>
+                            Start Webcam
+                        </button>
+                        <button class="btn-danger" id="stopWebcamBtn" style="display: none;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <rect x="9" y="9" width="6" height="6"></rect>
+                            </svg>
+                            Stop Webcam
+                        </button>
+                    </div>
+                    <div class="webcam-stats" id="webcamStats" style="display: none;">
+                        <span>FPS: <strong id="fpsCounter">0</strong></span>
+                        <span>Detections: <strong id="detectionCounter">0</strong></span>
+                        <span>Status: <strong id="webcamStatus">Initializing...</strong></span>
+                    </div>
+                </div>
+                <div class="detections-panel">
+                    <h2>Live Detections</h2>
+                    <div id="webcamDetectionsList"></div>
                 </div>
             </div>
 
@@ -56,4 +118,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>

@@ -13,7 +13,7 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "state" {
-  bucket = var.bucket_name
+  bucket = var.state_bucket_name
 }
 
 resource "aws_dynamodb_table" "state_lock" {
