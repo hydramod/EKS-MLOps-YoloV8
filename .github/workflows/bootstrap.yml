@@ -16,7 +16,7 @@ on:
         required: false
 
 env:
-  TF_VERSION: 1.5.0
+  TF_VERSION: 1.13.4
 
 jobs:
   bootstrap:
