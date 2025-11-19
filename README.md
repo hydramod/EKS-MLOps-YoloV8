@@ -14,50 +14,309 @@ This project demonstrates a complete MLOps workflow for deploying a machine lear
 
 ## Architecture
 
+```mermaid
+graph TB
+    User[👤 User Browser]
+    
+    User -->|HTTPS/TLS| Route53[🌐 Route 53 DNS<br/>ml.yourdomain.com]
+    
+    Route53 --> NLB[⚖️ Network Load Balancer<br/>Created by Ingress Controller]
+    
+    NLB --> EKS[AWS EKS Cluster]
+    
+    subgraph EKS["☸️ AWS EKS Cluster"]
+        Ingress[🚪 Nginx Ingress Controller]
+        
+        Ingress --> FrontendSvc[Frontend Service<br/>ClusterIP]
+        Ingress --> BackendSvc[Backend Service<br/>ClusterIP]
+        
+        FrontendSvc --> FrontendPods[📦 Frontend Pods x2<br/>React UI]
+        BackendSvc --> BackendPods[📦 Backend Pods x2<br/>Flask + YOLOv8]
+        
+        ExternalDNS[🔗 ExternalDNS<br/>Manages Route53 records]
+        CertManager[🔐 Cert-Manager<br/>Manages TLS certificates]
+        HPA[📊 Horizontal Pod Autoscaler<br/>Scales based on load]
+    end
+    
+    style User fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    style Route53 fill:#FF9900,stroke:#CC7A00,stroke-width:2px,color:#fff
+    style NLB fill:#FF9900,stroke:#CC7A00,stroke-width:2px,color:#fff
+    style EKS fill:#326CE5,stroke:#1E4B99,stroke-width:3px,color:#fff
+    style Ingress fill:#67C23A,stroke:#4F9C2E,stroke-width:2px,color:#fff
+    style FrontendSvc fill:#E6A23C,stroke:#C8882A,stroke-width:2px,color:#fff
+    style BackendSvc fill:#E6A23C,stroke:#C8882A,stroke-width:2px,color:#fff
+    style FrontendPods fill:#909399,stroke:#73767A,stroke-width:2px,color:#fff
+    style BackendPods fill:#909399,stroke:#73767A,stroke-width:2px,color:#fff
+    style ExternalDNS fill:#67C23A,stroke:#4F9C2E,stroke-width:2px,color:#fff
+    style CertManager fill:#67C23A,stroke:#4F9C2E,stroke-width:2px,color:#fff
+    style HPA fill:#67C23A,stroke:#4F9C2E,stroke-width:2px,color:#fff
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         User Browser                             │
-└──────────────────────┬──────────────────────────────────────────┘
-                       │ HTTPS (TLS)
-                       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      Route 53 (DNS)                              │
-│                   ml.yourdomain.com                              │
-└──────────────────────┬──────────────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                  Network Load Balancer                           │
-│              (Created by Ingress Controller)                     │
-└──────────────────────┬──────────────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       AWS EKS Cluster                            │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │              Nginx Ingress Controller                     │  │
-│  └────────────┬──────────────────────────────────────────────┘  │
-│               │                                                  │
-│       ┌───────┴───────┐                                          │
-│       ▼               ▼                                          │
-│  ┌─────────┐    ┌──────────┐                                    │
-│  │Frontend │    │ Backend  │                                    │
-│  │Service  │    │ Service  │                                    │
-│  │(React)  │    │(Flask +  │                                    │
-│  │         │    │ YOLOv8)  │                                    │
-│  └────┬────┘    └────┬─────┘                                    │
-│       │              │                                           │
-│  ┌────▼────┐    ┌────▼─────┐                                    │
-│  │Frontend │    │Backend   │                                    │
-│  │Pods (2) │    │Pods (2)  │                                    │
-│  └─────────┘    └──────────┘                                    │
-│                                                                  │
-│  Supporting Services:                                            │
-│  • ExternalDNS (manages Route53 records)                        │
-│  • Cert-Manager (manages TLS certificates)                      │
-│  • Horizontal Pod Autoscaler (scales based on load)             │
-└──────────────────────────────────────────────────────────────────┘
+
+## 📸 Screenshots & Documentation
+
+Visual proof of the complete working deployment across all AWS services.
+
+### 🎨 Working Application
+
+<div align="center">
+
+#### Object Detection - Multiple Classes
+<img src="docs/screenshots/cat-dog.png" alt="Cat and Dog Detection" width="700"/>
+
+*YOLOv8 detecting cat (89.77%), dog (81.96%), and chair (39.55%) with accurate bounding boxes*
+
+<br/>
+
+#### People Detection
+<img src="docs/screenshots/people.png" alt="Multiple People Detection" width="700"/>
+
+*Real-time detection of multiple people with 90%+ confidence scores*
+
+</div>
+
+---
+
+### ☸️ Kubernetes Deployment
+
+<div align="center">
+
+#### Successful Deployment Status
+<img src="docs/screenshots/kubectl.png" alt="kubectl get all output" width="800"/>
+
+*All pods running with zero restarts, services exposed, ingress configured*
+
+</div>
+
+**Deployment Summary:**
+- ✅ 4 Application Pods (2 backend + 2 frontend) - Running
+- ✅ 2 Services (ClusterIP) - Active
+- ✅ 2 Deployments (2/2 ready) - Healthy
+- ✅ 2 HorizontalPodAutoscalers - Configured
+- ✅ Ingress with Load Balancer - Active
+- ✅ Certificate Provisioning - In Progress
+
+---
+
+### 🔷 AWS EKS Infrastructure
+
+<div align="center">
+
+#### EKS Cluster Overview
+<img src="docs/screenshots/cluster.png" alt="EKS Cluster" width="700"/>
+
+*Production EKS cluster running Kubernetes 1.28*
+
+<br/>
+
+#### Worker Nodes
+<img src="docs/screenshots/nodes.png" alt="EKS Nodes" width="700"/>
+
+*2 worker nodes (t3.medium) in Ready status across multiple AZs*
+
+<br/>
+
+#### All Running Pods
+<img src="docs/screenshots/pods.png" alt="All Pods" width="700"/>
+
+*15 total pods including application and system components*
+
+<br/>
+
+#### EKS Add-ons
+<img src="docs/screenshots/addons.png" alt="EKS Add-ons" width="700"/>
+
+*VPC CNI, kube-proxy, and CoreDNS add-ons all active*
+
+</div>
+
+**EKS Configuration:**
+- Cluster Version: 1.28
+- Node Type: t3.medium
+- Scaling: 1-4 nodes (currently 2)
+- Availability Zones: 3 (us-east-1a, 1b, 1c)
+- Add-ons: VPC CNI, kube-proxy, CoreDNS
+
+---
+
+### 🗄️ Terraform State Backend
+
+<div align="center">
+
+#### DynamoDB Lock Table
+<img src="docs/screenshots/dynamodb.png" alt="DynamoDB" width="700"/>
+
+*State locking to prevent concurrent Terraform operations*
+
+<br/>
+
+#### S3 State Storage
+<img src="docs/screenshots/s3.png" alt="S3 Bucket" width="700"/>
+
+*Centralized Terraform state in encrypted S3 bucket*
+
+</div>
+
+**State Management:**
+- S3 Bucket: `yolov8-mlops-tf-state-*`
+- DynamoDB Table: `yolov8-mlops-tf-lock`
+- Encryption: AES-256
+- Versioning: Enabled
+- State File: 148.3 KB
+
+---
+
+### 🌐 Network & DNS
+
+<div align="center">
+
+#### VPC Configuration
+<img src="docs/screenshots/vpc.png" alt="VPC" width="700"/>
+
+*Multi-AZ VPC with 6 subnets (3 public + 3 private)*
+
+<br/>
+
+#### Route53 Hosted Zone
+<img src="docs/screenshots/hz.png" alt="Hosted Zone" width="700"/>
+
+*Public DNS zone for alistechlab.click domain*
+
+<br/>
+
+#### DNS Records
+<img src="docs/screenshots/route53.png" alt="DNS Records" width="700"/>
+
+*ExternalDNS automatically managing A and TXT records*
+
+</div>
+
+**Network Details:**
+- VPC CIDR: 10.0.0.0/16
+- Availability Zones: 3
+- Public Subnets: 3 (for load balancers)
+- Private Subnets: 3 (for EKS nodes)
+- NAT Gateways: 3 (one per AZ)
+- Route Tables: 5
+- DNS: Route53 with ExternalDNS automation
+
+---
+
+### 🏗️ Architecture Diagram
+
+<div align="center">
+<img src="docs/architecture-diagram.svg" alt="System Architecture" width="900"/>
+
+*Complete MLOps infrastructure on AWS EKS*
+</div>
+
+**Architecture Components:**
+
+#### Frontend Layer
+- **Users** → Browser access via HTTPS
+- **DNS** → Route53 with automated record management
+- **Load Balancer** → AWS Network Load Balancer
+- **Ingress** → Nginx Ingress Controller with SSL termination
+
+#### Application Layer
+- **Frontend** → React UI (2 replicas, HPA enabled)
+- **Backend** → Flask API + YOLOv8 (2 replicas, HPA enabled)
+- **Services** → ClusterIP services for internal routing
+
+#### Infrastructure Layer
+- **Compute** → EKS managed node groups (t3.medium)
+- **Network** → VPC with public/private subnets across 3 AZs
+- **Storage** → ECR for images, S3 for state, EBS for volumes
+- **DNS** → Route53 + ExternalDNS for automation
+- **SSL** → Cert-Manager + Let's Encrypt
+
+#### Automation Layer
+- **IaC** → Terraform with S3 backend + DynamoDB locking
+- **CI/CD** → GitHub Actions with OIDC authentication
+- **GitOps** → Helm for application deployment
+
+---
+
+### 📊 Infrastructure Metrics
+
+#### Application Statistics
+| Metric | Value | Status |
+|--------|-------|--------|
+| Application URL | https://ml.alistechlab.click | ✅ Live |
+| Total Pods | 15 | ✅ Running |
+| Application Pods | 4 (2 frontend + 2 backend) | ✅ Running |
+| System Pods | 11 | ✅ Running |
+| Pod Restarts | 0 | ✅ Stable |
+| Response Time | <100ms | ✅ Fast |
+| Detection Accuracy | 80-95% | ✅ High |
+
+#### Infrastructure Resources
+| Component | Details | Status |
+|-----------|---------|--------|
+| EKS Cluster | Kubernetes 1.28 | ✅ Active |
+| Worker Nodes | 2x t3.medium | ✅ Ready |
+| Availability Zones | 3 (us-east-1a/b/c) | ✅ Multi-AZ |
+| VPC | 10.0.0.0/16 | ✅ Available |
+| Subnets | 6 (3 public + 3 private) | ✅ Active |
+| NAT Gateways | 3 | ✅ Active |
+| Load Balancer | Network LB | ✅ Active |
+| DNS Zone | alistechlab.click | ✅ Active |
+| DNS Records | 3 (A + TXT) | ✅ Configured |
+
+#### Storage & State
+| Resource | Details | Status |
+|----------|---------|--------|
+| S3 State Bucket | yolov8-mlops-tf-state-* | ✅ Active |
+| State File Size | 148.3 KB | ✅ Healthy |
+| DynamoDB Lock | yolov8-mlops-tf-lock | ✅ Active |
+| ECR Repositories | 2 (frontend + backend) | ✅ Active |
+
+---
+
+### 🎯 Deployment Verification
+
+Verify all components are working:
+
+```bash
+# 1. Check cluster connectivity
+kubectl cluster-info
+
+# 2. Verify all resources
+kubectl get all,ingress,certificate -n yolov8
+
+# 3. Check node status
+kubectl get nodes
+
+# 4. Test backend health
+curl https://ml.alistechlab.click/health
+# Expected: {"status":"ok"}
+
+# 5. Check pod logs
+kubectl logs -n yolov8 -l app.kubernetes.io/component=backend --tail=20
+
+# 6. Watch pod status
+kubectl get pods -n yolov8 -w
+
+# 7. Check certificate status
+kubectl get certificate -n yolov8
+# Expected: Ready: True (after 2-5 minutes)
+
+# 8. Verify DNS resolution
+nslookup ml.alistechlab.click
+
+# 9. Test application
+open https://ml.alistechlab.click
 ```
+
+**Expected Results:**
+- ✅ All pods in `Running` state
+- ✅ Deployments showing `2/2` ready
+- ✅ Ingress has load balancer address
+- ✅ Health endpoint returns `{"status":"ok"}`
+- ✅ DNS resolves to load balancer IP
+- ✅ Application accessible via browser
+- ✅ Object detection working
+
+---
 
 ## Data Flow
 
