@@ -315,7 +315,8 @@ resource "helm_release" "argocd" {
           annotations = {
             "cert-manager.io/cluster-issuer"              = "letsencrypt-production"
             "nginx.ingress.kubernetes.io/ssl-redirect"    = "true"
-            "nginx.ingress.kubernetes.io/backend-protocol" = "HTTPS"
+            "nginx.ingress.kubernetes.io/backend-protocol" = "HTTP"
+            "nginx.ingress.kubernetes.io/ssl-passthrough"   = "true"
           }
           hosts = ["argocd.${var.domain_name}"]
           tls = [

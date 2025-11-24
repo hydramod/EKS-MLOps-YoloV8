@@ -237,9 +237,139 @@ deploy_application() {
     log_success "Application deployed"
 }
 
+# Deploy with ArgoCD (Optional GitOps)
+deploy_with_argocd() {
+    log_step "STEP 7: Deploy via ArgoCD (Optional GitOps)"
+
+    # Check if ArgoCD is deployed
+    if ! kubectl get namespace argocd &> /dev/null; then
+        log_warning "ArgoCD namespace not found. Skipping ArgoCD deployment."
+        log_info "ArgoCD should be automatically deployed by Terraform."
+        return
+    fi
+
+    log_info "ArgoCD is available for GitOps-based deployment"
+    echo -e "${CYAN}Benefits of ArgoCD:${NC}"
+    echo -e "  • Automatic sync from Git repository"
+    echo -e "  • Visual deployment status and history"
+    echo -e "  • Easy rollback to previous versions"
+    echo -e "  • Declarative GitOps workflow"
+
+    read -p "Deploy with ArgoCD? (y/n): " USE_ARGOCD
+
+    if [ "$USE_ARGOCD" != "y" ]; then
+        log_info "Skipping ArgoCD deployment"
+        return
+    fi
+
+    # Wait for ArgoCD to be ready
+    log_info "Waiting for ArgoCD server..."
+    kubectl wait --for=condition=available --timeout=300s \
+        deployment/argocd-server -n argocd &> /dev/null || {
+        log_warning "ArgoCD server not ready yet. You can deploy via ArgoCD later."
+        return
+    }
+
+    log_success "ArgoCD is ready"
+
+    # Create ArgoCD application manifest with correct values
+    log_info "Creating ArgoCD application..."
+
+    cat > /tmp/yolov8-argocd-app.yaml <<EOF
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: yolov8
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/hydramod/EKS-MLOps-YoloV8.git
+    targetRevision: main
+    path: charts/yolov8
+    helm:
+      values: |
+        global:
+          domain: ${DOMAIN_NAME}
+          subdomain: ml
+        backend:
+          image:
+            repository: ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-backend
+            tag: latest
+            pullPolicy: Always
+        frontend:
+          image:
+            repository: ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-production-frontend
+            tag: latest
+            pullPolicy: Always
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: yolov8
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+EOF
+
+    # Apply the ArgoCD application
+    kubectl apply -f /tmp/yolov8-argocd-app.yaml
+
+    # Get ArgoCD credentials
+    ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret \
+        -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "N/A")
+
+    log_success "ArgoCD application created"
+
+    echo -e "\n${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║              ArgoCD GitOps Deployment Configured               ║${NC}"
+    echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "\n${CYAN}ArgoCD Details:${NC}"
+    echo -e "  • URL:      ${GREEN}https://argocd.${DOMAIN_NAME}${NC}"
+    echo -e "  • Username: ${YELLOW}admin${NC}"
+    echo -e "  • Password: ${YELLOW}${ARGOCD_PASSWORD}${NC}"
+
+    echo -e "\n${CYAN}Monitor Deployment:${NC}"
+    echo -e "  kubectl get application yolov8 -n argocd"
+    echo -e "  kubectl describe application yolov8 -n argocd"
+
+    echo -e "\n${CYAN}Access ArgoCD UI:${NC}"
+    echo -e "  1. Visit: https://argocd.${DOMAIN_NAME}"
+    echo -e "  2. Login with credentials above"
+    echo -e "  3. View 'yolov8' application status"
+
+    # Clean up temp file
+    rm -f /tmp/yolov8-argocd-app.yaml
+
+    # Wait a moment for sync to start
+    sleep 3
+
+    # Show sync status
+    log_info "Initial sync status:"
+    kubectl get application yolov8 -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null && echo
+
+}
+
 # Verify
 verify_deployment() {
-    log_step "STEP 7: Verify Deployment"
+    log_step "STEP 8: Verify Deployment"
     kubectl get pods,svc,ingress,certificate -n yolov8
 }
 
@@ -270,6 +400,7 @@ main() {
     configure_backend
     deploy_infrastructure
     deploy_application
+    deploy_with_argocd
     verify_deployment
     show_summary
 }

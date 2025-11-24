@@ -24,7 +24,7 @@ terraform {
   # IMPORTANT: Update these values with the output from ./scripts/bootstrap.sh
   # Run: cd infra/bootstrap && terraform output -raw backend_config_hcl
   backend "s3" {
-    bucket         = "yolov8-mlops-tf-state-637637d3" # Replace with your S3 bucket name from bootstrap
+    bucket         = "yolov8-mlops-tf-state-52089993" # Replace with your S3 bucket name from bootstrap
     key            = "terraform.tfstate"
     region         = "us-east-1" # Replace with your AWS region
     encrypt        = true
