@@ -22,3 +22,13 @@ output "cert_manager_role_arn" {
   description = "IAM role ARN for Cert-Manager"
   value       = aws_iam_role.cert_manager.arn
 }
+
+output "argocd_namespace" {
+  description = "Namespace where ArgoCD is deployed"
+  value       = kubernetes_namespace.argocd.metadata[0].name
+}
+
+output "argocd_url" {
+  description = "ArgoCD server URL"
+  value       = "https://argocd.${var.domain_name}"
+}

@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: yolov8
+  namespace: argocd
+  # Finalizer to ensure cascade deletion
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  # The project the application belongs to
+  project: default
+
+  # Source of the application manifest
+  source:
+    repoURL: https://github.com/hydramod/EKS-MLOps-YoloV8.git
+    targetRevision: main
+    path: charts/yolov8
+    helm:
+      values: |
+        global:
+          domain: example.com  # Override with your domain
+          subdomain: ml
+ 
+        backend:
+          image:
+            repository: ""  # Set by CI/CD
+            tag: "latest"
+
+        frontend:
+          image:
+            repository: ""  # Set by CI/CD
+            tag: "latest"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: yolov8
+
+  syncPolicy:
+    automated:
+      prune: true    # Prune resources that are no longer defined in Git
+      selfHeal: true # Automatically sync when the live cluster state deviates from Git
+      allowEmpty: false
+
+    syncOptions:
+      - CreateNamespace=true  # Create namespace if it doesn't exist
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas  # Ignore replica count (managed by HPA)

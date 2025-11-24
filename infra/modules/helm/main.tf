@@ -34,6 +34,16 @@ resource "kubernetes_namespace" "external_dns" {
   }
 }
 
+# Namespace for ArgoCD
+resource "kubernetes_namespace" "argocd" {
+  metadata {
+    name = "argocd"
+    labels = {
+      name = "argocd"
+    }
+  }
+}
+
 # IAM Role for ExternalDNS (IRSA)
 resource "aws_iam_role" "external_dns" {
   name = "${var.project_name}-${var.environment}-external-dns"
@@ -283,4 +293,69 @@ resource "kubectl_manifest" "letsencrypt_production" {
   })
 
   depends_on = [helm_release.cert_manager]
+}
+
+# Helm Release: ArgoCD
+resource "helm_release" "argocd" {
+  name       = "argocd"
+  repository = "https://argoproj.github.io/argo-helm"
+  chart      = "argo-cd"
+  version    = "5.51.6"
+  namespace  = kubernetes_namespace.argocd.metadata[0].name
+
+  values = [
+    yamlencode({
+      server = {
+        service = {
+          type = "ClusterIP"
+        }
+        ingress = {
+          enabled     = true
+          ingressClassName = "nginx"
+          annotations = {
+            "cert-manager.io/cluster-issuer"              = "letsencrypt-production"
+            "nginx.ingress.kubernetes.io/ssl-redirect"    = "true"
+            "nginx.ingress.kubernetes.io/backend-protocol" = "HTTPS"
+          }
+          hosts = ["argocd.${var.domain_name}"]
+          tls = [
+            {
+              secretName = "argocd-tls"
+              hosts      = ["argocd.${var.domain_name}"]
+            }
+          ]
+        }
+        extraArgs = [
+          "--insecure" # ArgoCD server runs with TLS, ingress handles external TLS
+        ]
+      }
+      configs = {
+        params = {
+          "server.insecure" = true # Let ingress handle TLS
+        }
+        cm = {
+          "url" = "https://argocd.${var.domain_name}"
+        }
+      }
+      controller = {
+        metrics = {
+          enabled = true
+        }
+      }
+      repoServer = {
+        metrics = {
+          enabled = true
+        }
+      }
+      applicationSet = {
+        enabled = true
+      }
+    })
+  ]
+
+  depends_on = [
+    helm_release.nginx_ingress,
+    helm_release.cert_manager,
+    kubectl_manifest.letsencrypt_production
+  ]
 }

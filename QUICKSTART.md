@@ -109,6 +109,7 @@ kubectl get nodes
 - Nginx Ingress Controller
 - ExternalDNS for automatic Route53 record management
 - Cert-Manager for automatic TLS certificates (Let's Encrypt)
+- ArgoCD for GitOps continuous deployment
 
 ### Step 4: Build and Deploy Application (15 minutes)
 
@@ -254,10 +255,11 @@ kubectl describe certificate yolov8-tls -n yolov8
 ## Next Steps
 
 1. Set up GitHub Actions for CI/CD
-2. Configure monitoring with Prometheus/Grafana
-3. Implement custom domain logic
-4. Add authentication
-5. Scale for production load
+2. Deploy application via ArgoCD for GitOps
+3. Configure monitoring with Prometheus/Grafana
+4. Implement custom domain logic
+5. Add authentication
+6. Scale for production load
 
 ## Cost Warning
 

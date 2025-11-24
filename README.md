@@ -8,7 +8,8 @@ This project demonstrates a complete MLOps workflow for deploying a machine lear
 - **YOLOv8** for real-time object detection
 - **AWS EKS** for Kubernetes orchestration
 - **Terraform** for Infrastructure as Code
-- **Helm** for application deployment
+- **ArgoCD** for GitOps continuous deployment
+- **Helm** for application packaging
 - **GitHub Actions** for CI/CD automation
 - **HTTPS** with automated TLS certificates
 
@@ -35,9 +36,14 @@ graph TB
         
         ExternalDNS[🔗 ExternalDNS<br/>Manages Route53 records]
         CertManager[🔐 Cert-Manager<br/>Manages TLS certificates]
+        ArgoCD[🔄 ArgoCD<br/>GitOps continuous deployment]
         HPA[📊 Horizontal Pod Autoscaler<br/>Scales based on load]
     end
-    
+
+    Git[📦 GitHub Repository] -->|GitOps Sync| ArgoCD
+    ArgoCD -->|Deploys| FrontendPods
+    ArgoCD -->|Deploys| BackendPods
+
     style User fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
     style Route53 fill:#FF9900,stroke:#CC7A00,stroke-width:2px,color:#fff
     style NLB fill:#FF9900,stroke:#CC7A00,stroke-width:2px,color:#fff
@@ -49,7 +55,9 @@ graph TB
     style BackendPods fill:#909399,stroke:#73767A,stroke-width:2px,color:#fff
     style ExternalDNS fill:#67C23A,stroke:#4F9C2E,stroke-width:2px,color:#fff
     style CertManager fill:#67C23A,stroke:#4F9C2E,stroke-width:2px,color:#fff
+    style ArgoCD fill:#F46D43,stroke:#D73027,stroke-width:2px,color:#fff
     style HPA fill:#67C23A,stroke:#4F9C2E,stroke-width:2px,color:#fff
+    style Git fill:#24292E,stroke:#0366D6,stroke-width:2px,color:#fff
 ```
 
 ## 📸 Screenshots & Documentation
@@ -232,7 +240,7 @@ Visual proof of the complete working deployment across all AWS services.
 #### Automation Layer
 - **IaC** → Terraform with S3 backend + DynamoDB locking
 - **CI/CD** → GitHub Actions with OIDC authentication
-- **GitOps** → Helm for application deployment
+- **GitOps** → ArgoCD for continuous deployment + Helm for packaging
 
 ---
 
@@ -657,6 +665,64 @@ See `infra/bootstrap/README.md` for detailed instructions.
 5. **Access your application**
 
    Open your browser to: `https://ml.$DOMAIN_NAME`
+
+### Step 6 (Optional): Deploy with ArgoCD for GitOps
+
+ArgoCD is automatically installed by Terraform and provides GitOps-based continuous deployment.
+
+1. **Access ArgoCD UI**
+   ```bash
+   # Get ArgoCD URL (set in Terraform)
+   echo "https://argocd.$DOMAIN_NAME"
+
+   # Get initial admin password
+   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+   echo
+   ```
+
+2. **Deploy YOLOv8 Application via ArgoCD**
+
+   **Option A: Using kubectl**
+   ```bash
+   # Update repository URL in application.yaml first
+   kubectl apply -f charts/yolov8/argocd/application.yaml
+
+   ```
+
+   **Option B: Using ArgoCD CLI**
+   ```bash
+   # Install ArgoCD CLI
+   brew install argocd  # macOS
+   # or download from: https://github.com/argoproj/argo-cd/releases
+
+   # Login
+   argocd login argocd.$DOMAIN_NAME --username admin
+
+   # Create application
+   argocd app create yolov8 \
+     --repo https://github.com/YOUR_ORG/EKS-MLOps-YoloV8.git \
+     --path charts/yolov8 \
+     --dest-server https://kubernetes.default.svc \
+     --dest-namespace yolov8 \
+     --sync-policy automated \
+     --auto-prune \
+     --self-heal
+   ```
+
+3. **Monitor Deployment**
+   ```bash
+   # Watch sync status
+   argocd app get yolov8 --watch
+   # Or view in UI: https://argocd.$DOMAIN_NAME
+   ```
+
+**Benefits of ArgoCD:**
+
+- 🔄 Automatic sync from Git repository
+- 🔍 Visual deployment status and history
+- 🔙 Easy rollback to previous versions
+- 🔐 Declarative GitOps workflow
+- 📊 Real-time health monitoring
 
 ## CI/CD with GitHub Actions
 

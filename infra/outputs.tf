@@ -57,3 +57,14 @@ output "configure_kubectl" {
   description = "Command to configure kubectl"
   value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
 }
+
+output "argocd_url" {
+  description = "ArgoCD server URL"
+  value       = module.helm.argocd_url
+}
+
+output "argocd_initial_password" {
+  description = "Command to get ArgoCD initial admin password"
+  value       = "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath=\"{.data.password}\" | base64 -d"
+  sensitive   = false
+}
